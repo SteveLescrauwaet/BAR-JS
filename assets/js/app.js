@@ -63,10 +63,76 @@
     return (parts.slice(0, 2).map(p => p[0]).join('') || '?').toUpperCase();
   }
 
+  function normalizeProductKey(name = '') {
+    return String(name)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  const LOCAL_PRODUCT_IMAGE_MAP = {
+    coca_cola: 'coca_cola.png',
+    coca_cola_zero: 'coca_zero.png',
+    fanta: 'fanta.png',
+    sprite: 'sprite.png',
+    fuze_tea_peche: 'fuze_tea.png',
+    jus_de_fruit: 'looza.png',
+    oasis: 'oasis.png',
+    aquarius: 'aquarius.png',
+    eau_plate: 'spa_plate.png',
+    eau_petillante: 'spa_petillante.png',
+
+    jupiler: 'jupiler.png',
+    stella: 'stella.png',
+    jupiler_zero: 'jupiler_zero.png',
+    carlsberg_zero: 'carlsberg_zero.png',
+    hoegaarden_rosee: 'hoegaarden_rosee.png',
+    liefmans: 'liefmans.png',
+    desperados: 'desperados.png',
+
+    paix_dieu: 'paix_dieu.png',
+    orval: 'orval.png',
+    duvel: 'duvel.png',
+    omer: 'omer.png',
+    kasteel_rouge: 'kasteel_rouge.png',
+    badou: 'badou.png',
+    autres: 'badou.png',
+
+    cava: 'freixenet.png',
+    vin_blanc: 'vin_blanc.png',
+    vin_rouge: 'vin_rouge.png',
+    vin_rose: 'vin_rose.png',
+    porto: 'porto.png',
+    martini_rouge: 'martini.png',
+    martini_blanc: 'martini.png',
+
+    cafe: 'cafe.png',
+    the: 'the.png',
+    chocolat_chaud: 'chocolat_chaud.png',
+    soupe: 'soupe.png',
+
+    chips: 'croky.png',
+    croque: 'croque.png',
+    hamburger_mexicanos: 'hamburger_mexicanos.png',
+    hamburger: 'hamburger.png',
+    gaufre_nature: 'gaufre.png',
+    gaufre_nutella: 'gaufre.png'
+  };
+
+  function localProductImageUrl(p) {
+    const key = normalizeProductKey(p?.name || '');
+    const file = LOCAL_PRODUCT_IMAGE_MAP[key];
+    return file ? `./assets/product-images/${file}` : '';
+  }
+
   function productImageUrl(p) {
-    if (!p?.image_path || !db) return '';
-    const { data } = db.storage.from('product-images').getPublicUrl(p.image_path);
-    return data?.publicUrl || '';
+    if (p?.image_path && db) {
+      const { data } = db.storage.from('product-images').getPublicUrl(p.image_path);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+    return localProductImageUrl(p);
   }
 
   function toast(message, type = 'ok') {
