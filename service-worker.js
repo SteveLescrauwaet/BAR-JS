@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jsd-bar-pwa-v4';
+const CACHE_NAME = 'jsd-bar-pwa-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,7 +6,7 @@ const APP_SHELL = [
   './assets/css/app.css',
   './assets/js/config.js',
   './assets/js/app.js',
-  './assets/icons/club-logo.svg',
+  './assets/icons/club-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'
 ];
