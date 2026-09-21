@@ -815,10 +815,18 @@
   function productModal(product,cats,allProducts){
     const isNew=!product;
     const current=product||{name:'',category:cats[0]?.name||'Softs',sale_price:0,cost_price:0,stock:20,active:true};
+    const categoryNames=[...new Set([...cats.map(c=>c.name),current.category].filter(Boolean))];
+    const categoryOptions=categoryNames.map(name=>`<option value="${esc(name)}" ${name===current.category?'selected':''}>${esc(name)}</option>`).join('');
     const m=modalShell(isNew?'Ajouter un produit':`Modifier • ${current.name}`,`
       <div class="field-grid">
         <label>Nom du produit<input id="prodName" value="${esc(current.name)}" maxlength="100" /></label>
-        <label>Catégorie<input id="prodCategory" value="${esc(current.category)}" list="categoryList" maxlength="60" /><datalist id="categoryList">${cats.map(c=>`<option value="${esc(c.name)}"></option>`).join('')}</datalist></label>
+        <label>Catégorie
+          <select id="prodCategory">
+            ${categoryOptions}
+            <option value="__new__">＋ Nouvelle catégorie…</option>
+          </select>
+        </label>
+        <label id="newCategoryWrap" class="hidden">Nouvelle catégorie<input id="prodNewCategory" maxlength="60" placeholder="Nom de la nouvelle catégorie" /></label>
         <label>Prix de vente<input id="prodSale" type="number" min="0" step="0.01" value="${num(current.sale_price).toFixed(2)}" /></label>
         <label>Prix d’achat / revient<input id="prodCost" type="number" min="0" step="0.01" value="${num(current.cost_price).toFixed(2)}" /></label>
         ${isNew?`<label>Stock de départ<input id="prodStock" type="number" min="0" step="1" value="20" /></label>`:''}
@@ -826,11 +834,24 @@
       </div>
       <label style="margin-top:12px;display:flex;flex-direction:row;align-items:center;gap:8px"><input id="prodActive" type="checkbox" style="width:auto" ${current.active?'checked':''}/> Produit actif dans la caisse</label>
       <p class="muted small">La photo est envoyée dans Supabase Storage. Taille maximale configurée : 5 Mo.</p>`);
+
+    const categorySelect=byId('prodCategory');
+    const newCategoryWrap=byId('newCategoryWrap');
+    const updateCategoryMode=()=>{
+      const isNewCategory=categorySelect.value==='__new__';
+      newCategoryWrap.classList.toggle('hidden',!isNewCategory);
+      if(isNewCategory)setTimeout(()=>byId('prodNewCategory')?.focus(),0);
+    };
+    categorySelect.addEventListener('change',updateCategoryMode);
+    updateCategoryMode();
+
     addModalButtons(m.actions,[
       {label:'Annuler',onClick:m.close},
       {label:'Enregistrer',className:'primary',onClick:async()=>{
         try{
-          const name=byId('prodName').value.trim(), category=byId('prodCategory').value.trim();
+          const name=byId('prodName').value.trim();
+          const selectedCategory=byId('prodCategory').value;
+          const category=(selectedCategory==='__new__'?byId('prodNewCategory').value:selectedCategory).trim();
           const sale_price=Number(byId('prodSale').value),cost_price=Number(byId('prodCost').value),active=byId('prodActive').checked;
           if(!name||!category||!Number.isFinite(sale_price)||sale_price<0||!Number.isFinite(cost_price)||cost_price<0){toast('Vérifie les champs produit.','warn');return;}
           await ensureCategory(category,cats);
