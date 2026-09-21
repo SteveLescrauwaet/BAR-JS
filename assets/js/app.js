@@ -626,17 +626,25 @@
     root.innerHTML=state.cashoutsToday.length?state.cashoutsToday.map(c=>`
       <div class="history-card">
         <div class="history-card-main"><div class="history-card-title">${esc(c.type)} • ${esc(c.person_name)}</div>
-        <div class="history-card-sub">Équipe ${esc(c.team)} • match ${esc(c.match_time)} • ${timeOnly(c.created_at)}${c.device_label?` • ${esc(c.device_label)}`:''}</div></div>
+        <div class="history-card-sub">${c.type==='Prélèvement caisse trésorier'
+          ? `Prélèvement trésorier • ${timeOnly(c.created_at)}${c.device_label?` • ${esc(c.device_label)}`:''}`
+          : `Équipe ${esc(c.team)} • match ${esc(c.match_time)} • ${timeOnly(c.created_at)}${c.device_label?` • ${esc(c.device_label)}`:''}`}</div></div>
         <div class="history-card-amount money-negative">− ${money(c.amount)}</div>
       </div>`).join(''):`<div class="admin-card muted">Aucune sortie de caisse enregistrée aujourd’hui.</div>`;
   }
 
   function cashOutForm(type) {
     const official=type==='Arbitre officiel';
-    const m=modalShell(type,`
+    const treasurer=type==='Prélèvement caisse trésorier';
+    const m=modalShell(type, treasurer ? `
+      <div class="field-grid">
+        <label>Nom du trésorier / responsable<input id="cashoutName" maxlength="100" placeholder="Nom et prénom" /></label>
+        <label>Montant prélevé<input id="cashoutAmount" type="number" min="0.01" step="0.01" inputmode="decimal" /></label>
+      </div>
+      <div class="help-box" style="margin-top:12px">Ce prélèvement est enregistré comme une sortie de caisse et diminue le bénéfice net ainsi que la caisse espèces théorique de la journée.</div>` : `
       <div class="field-grid">
         <label>${official?'Nom de l’arbitre':'Nom du joueur qui arbitre'}<input id="cashoutName" maxlength="100" /></label>
-        <label>Montant payé<input id="cashoutAmount" type="number" min="0" step="0.01" inputmode="decimal" /></label>
+        <label>Montant payé<input id="cashoutAmount" type="number" min="0.01" step="0.01" inputmode="decimal" /></label>
         <label>Équipe arbitrée<input id="cashoutTeam" placeholder="Ex. U10, U12, U15…" maxlength="50" /></label>
         <label>Heure du match<input id="cashoutTime" type="time" /></label>
       </div>`);
@@ -645,12 +653,12 @@
       {label:'Enregistrer',className:'primary',onClick:async()=>{
         const person_name=byId('cashoutName').value.trim();
         const amount=Number(byId('cashoutAmount').value);
-        const team=byId('cashoutTeam').value.trim();
-        const match_time=byId('cashoutTime').value;
-        if(!person_name||!team||!match_time||!Number.isFinite(amount)||amount<0){toast('Complète tous les champs.','warn');return;}
+        const team=treasurer?'—':byId('cashoutTeam').value.trim();
+        const match_time=treasurer?'—':byId('cashoutTime').value;
+        if(!person_name||!Number.isFinite(amount)||amount<=0||(!treasurer&&(!team||!match_time))){toast('Complète tous les champs.','warn');return;}
         const {error}=await db.from('cash_outs').insert({type,person_name,amount,team,match_time,device_label:deviceLabel(),created_by:state.user.id});
         if(error){toast(error.message,'error');return;}
-        m.close(); await loadCashoutsToday(); renderCashoutsToday(); toast(`Sortie de caisse enregistrée : ${money(amount)}.`);
+        m.close(); await loadCashoutsToday(); renderCashoutsToday(); toast(treasurer?`Prélèvement trésorier enregistré : ${money(amount)}.`:`Sortie de caisse enregistrée : ${money(amount)}.`);
       }}
     ]);
   }
@@ -1045,7 +1053,7 @@
       <ul class="line-list">${(s.sale_lines||[]).map(l=>`<li>${l.quantity} × ${esc(l.product_name)} • ${money(l.unit_sale_price)} / unité • coût ${money(l.unit_cost_price)}</li>`).join('')||'<li>Détail indisponible</li>'}</ul></div>`;
   }
 
-  function cashOutAdminHtml(c){return `<div class="transaction-card"><div class="transaction-top"><div><span class="transaction-badge referee">${esc(c.type)}</span><strong>${esc(c.person_name)}</strong><div class="muted small" style="margin-top:5px">${timeOnly(c.created_at)} • équipe ${esc(c.team)} • match ${esc(c.match_time)}${c.device_label?` • ${esc(c.device_label)}`:''}</div></div><div class="money-negative" style="font-weight:900">− ${money(c.amount)}</div><button class="mini-btn red" data-delete-cashout="${c.id}">Supprimer</button></div></div>`;}
+  function cashOutAdminHtml(c){const detail=c.type==='Prélèvement caisse trésorier'?`${timeOnly(c.created_at)} • prélèvement trésorier${c.device_label?` • ${esc(c.device_label)}`:''}`:`${timeOnly(c.created_at)} • équipe ${esc(c.team)} • match ${esc(c.match_time)}${c.device_label?` • ${esc(c.device_label)}`:''}`;return `<div class="transaction-card"><div class="transaction-top"><div><span class="transaction-badge referee">${esc(c.type)}</span><strong>${esc(c.person_name)}</strong><div class="muted small" style="margin-top:5px">${detail}</div></div><div class="money-negative" style="font-weight:900">− ${money(c.amount)}</div><button class="mini-btn red" data-delete-cashout="${c.id}">Supprimer</button></div></div>`;}
 
   async function deleteSale(id,sales){
     const s=sales.find(x=>x.id===id);if(!s)return;

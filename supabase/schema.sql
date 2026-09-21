@@ -138,7 +138,7 @@ create index if not exists sales_created_at_idx on public.sales(created_at desc)
 create table if not exists public.cash_outs (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
-  type text not null check (type in ('Arbitre officiel','Arbitre non officiel')),
+  type text not null check (type in ('Arbitre officiel','Arbitre non officiel','Prélèvement caisse trésorier')),
   person_name text not null,
   amount numeric(10,2) not null check (amount >= 0),
   team text not null,
