@@ -778,31 +778,120 @@
 
   async function renderProductsAdmin(root){
     const [products,cats]=await Promise.all([fetchAllProducts(),fetchCategories()]);
+    const productCategories=[...new Set(products.map(p=>p.category))];
+    const orderedCats=[...cats.map(c=>c.name),...productCategories.filter(name=>!cats.some(c=>c.name===name))];
     root.innerHTML=`
-      <div class="admin-toolbar"><div><h2>Produits & tarifs</h2><div class="muted small">Prix de vente, prix d’achat, photo et ordre d’affichage.</div></div><button class="btn primary" id="addProductBtn">＋ Ajouter un produit</button></div>
-      <div class="two-col">
-        <section><div class="admin-card"><h3>Ordre des catégories</h3><p class="muted small">Utilise les flèches pour changer l’ordre affiché dans la caisse.</p><div class="order-list" id="categoryOrderList">${cats.map((c,i)=>`
-          <div class="order-row"><span>${esc(c.name)}</span><button class="mini-btn" data-cat-up="${i}" ${i===0?'disabled':''}>↑</button><button class="mini-btn" data-cat-down="${i}" ${i===cats.length-1?'disabled':''}>↓</button></div>`).join('')}</div></div></section>
-        <section><div class="admin-card"><h3>Repère</h3><p class="muted small">Le stock se modifie dans l’onglet <strong>Stock</strong>. Désactiver un produit le masque de la caisse sans effacer son historique.</p></div></section>
+      <div class="admin-toolbar"><div><h2>Produits & tarifs</h2><div class="muted small">Même présentation que la caisse. Maintiens la poignée ⠿ et glisse un produit pour changer son ordre dans sa catégorie.</div></div><button class="btn primary" id="addProductBtn">＋ Ajouter un produit</button></div>
+      <div class="admin-category-order admin-card">
+        <div><h3>Ordre des catégories</h3><p class="muted small">L'ordre des catégories reste modifiable avec les flèches.</p></div>
+        <div class="admin-category-order-chips" id="categoryOrderList">${cats.map((c,i)=>`
+          <div class="admin-category-order-chip"><strong>${esc(c.name)}</strong><button class="mini-btn" data-cat-up="${i}" ${i===0?'disabled':''}>↑</button><button class="mini-btn" data-cat-down="${i}" ${i===cats.length-1?'disabled':''}>↓</button></div>`).join('')}</div>
       </div>
-      <h3 class="section-title">PRODUITS • ${products.length}</h3>
-      <div id="adminProductList">${products.map((p,i)=>adminProductHtml(p,products)).join('')}</div>`;
+      <div class="admin-catalog" id="adminProductCatalog">
+        ${orderedCats.map(category=>{
+          const group=products.filter(p=>p.category===category).sort((a,b)=>a.sort_order-b.sort_order||a.name.localeCompare(b.name));
+          if(!group.length)return '';
+          return `<section class="admin-category-section">
+            <div class="admin-category-heading"><div class="category-title">${esc(category)}</div><span class="muted small">${group.length} produit${group.length>1?'s':''}</span></div>
+            <div class="admin-product-grid" data-admin-product-grid data-category="${esc(category)}">${group.map(adminProductCardHtml).join('')}</div>
+          </section>`;
+        }).join('')}
+      </div>`;
+
     byId('addProductBtn').addEventListener('click',()=>productModal(null,cats,products));
-    qsa('[data-edit-product]',root).forEach(b=>b.addEventListener('click',()=>productModal(products.find(p=>p.id===b.dataset.editProduct),cats,products)));
-    qsa('[data-toggle-product]',root).forEach(b=>b.addEventListener('click',()=>toggleProduct(products.find(p=>p.id===b.dataset.toggleProduct))));
-    qsa('[data-prod-up]',root).forEach(b=>b.addEventListener('click',()=>moveProduct(products,b.dataset.prodUp,-1)));
-    qsa('[data-prod-down]',root).forEach(b=>b.addEventListener('click',()=>moveProduct(products,b.dataset.prodDown,1)));
+    qsa('[data-edit-product]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();productModal(products.find(p=>p.id===b.dataset.editProduct),cats,products);}));
+    qsa('[data-toggle-product]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();toggleProduct(products.find(p=>p.id===b.dataset.toggleProduct));}));
     qsa('[data-cat-up]',root).forEach(b=>b.addEventListener('click',()=>moveCategory(cats,Number(b.dataset.catUp),-1)));
     qsa('[data-cat-down]',root).forEach(b=>b.addEventListener('click',()=>moveCategory(cats,Number(b.dataset.catDown),1)));
+    initAdminProductReorder(root);
   }
 
-  function adminProductHtml(p,all){
-    const same=all.filter(x=>x.category===p.category).sort((a,b)=>a.sort_order-b.sort_order||a.name.localeCompare(b.name));
-    const idx=same.findIndex(x=>x.id===p.id);
-    const photo=p.imageUrl?`<img class="admin-product-img" src="${esc(p.imageUrl)}" alt="" />`:`<div class="admin-product-fallback">${esc(initials(p.name))}</div>`;
-    return `<div class="admin-card"><div class="admin-card-row">${photo}<div class="admin-card-main"><h3>${esc(p.name)} ${p.active?'':'<span class="muted small">(inactif)</span>'}</h3>
-      <div class="muted small">${esc(p.category)} • Vente ${money(p.sale_price)} • Achat ${money(p.cost_price)} • Marge unitaire ${money(num(p.sale_price)-num(p.cost_price))}</div></div>
-      <div class="admin-card-actions"><button class="mini-btn" data-prod-up="${p.id}" ${idx<=0?'disabled':''}>↑</button><button class="mini-btn" data-prod-down="${p.id}" ${idx===same.length-1?'disabled':''}>↓</button><button class="mini-btn blue" data-edit-product="${p.id}">Modifier</button><button class="mini-btn ${p.active?'orange':'green'}" data-toggle-product="${p.id}">${p.active?'Désactiver':'Activer'}</button></div></div></div>`;
+  function adminProductCardHtml(p){
+    const low=p.stock_tracked&&p.starting_stock>0&&p.stock<=p.starting_stock*.10;
+    const photo=p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}" loading="lazy" />`:`<div class="product-fallback">${esc(initials(p.name))}</div>`;
+    return `<article class="admin-product-card ${p.active?'':'inactive'}" data-admin-product-card data-product-id="${p.id}">
+      <button type="button" class="admin-drag-handle" title="Maintenir et glisser pour déplacer" aria-label="Déplacer ${esc(p.name)}">⠿</button>
+      ${p.stock_tracked?`<span class="stock-badge ${low?'low':''}">${p.stock}</span>`:''}
+      <div class="admin-product-photo">${photo}</div>
+      <div class="admin-product-name">${esc(p.name)}${p.active?'':'<span class="admin-inactive-pill">Inactif</span>'}</div>
+      <div class="admin-product-sale">${money(p.sale_price)}</div>
+      <div class="admin-product-data"><span>Achat <strong>${money(p.cost_price)}</strong></span><span>Marge <strong>${money(num(p.sale_price)-num(p.cost_price))}</strong></span></div>
+      <div class="admin-product-card-actions"><button type="button" class="mini-btn blue" data-edit-product="${p.id}">Modifier</button><button type="button" class="mini-btn ${p.active?'orange':'green'}" data-toggle-product="${p.id}">${p.active?'Désactiver':'Activer'}</button></div>
+    </article>`;
+  }
+
+  function initAdminProductReorder(root){
+    let drag=null;
+
+    const cleanup=()=>{
+      if(!drag)return;
+      drag.card.classList.remove('dragging');
+      drag.grid.classList.remove('drag-active');
+      document.body.classList.remove('admin-reordering');
+    };
+
+    const finish=async()=>{
+      if(!drag)return;
+      const current=drag;
+      cleanup();
+      drag=null;
+      const ids=qsa('[data-admin-product-card]',current.grid).map(card=>card.dataset.productId);
+      const changed=current.originalIds.join('|')!==ids.join('|');
+      if(!changed)return;
+      await saveAdminProductOrder(current.grid,ids);
+    };
+
+    qsa('.admin-drag-handle',root).forEach(handle=>{
+      handle.addEventListener('pointerdown',e=>{
+        if(e.pointerType==='mouse'&&e.button!==0)return;
+        const card=handle.closest('[data-admin-product-card]');
+        const grid=card?.closest('[data-admin-product-grid]');
+        if(!card||!grid)return;
+        drag={card,grid,pointerId:e.pointerId,originalIds:qsa('[data-admin-product-card]',grid).map(x=>x.dataset.productId)};
+        card.classList.add('dragging');
+        grid.classList.add('drag-active');
+        document.body.classList.add('admin-reordering');
+        try{handle.setPointerCapture(e.pointerId);}catch(_){ }
+        e.preventDefault();
+      });
+
+      handle.addEventListener('pointermove',e=>{
+        if(!drag||drag.pointerId!==e.pointerId)return;
+        e.preventDefault();
+        const panel=byId('adminPanel');
+        if(panel){
+          const edge=80;
+          if(e.clientY<edge)panel.scrollBy({top:-18,behavior:'auto'});
+          else if(e.clientY>window.innerHeight-edge)panel.scrollBy({top:18,behavior:'auto'});
+        }
+        const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('[data-admin-product-card]');
+        if(!target||target===drag.card||target.closest('[data-admin-product-grid]')!==drag.grid)return;
+        const r=target.getBoundingClientRect();
+        const sameRow=e.clientY>=r.top&&e.clientY<=r.bottom;
+        const before=sameRow?e.clientX<r.left+r.width/2:e.clientY<r.top+r.height/2;
+        drag.grid.insertBefore(drag.card,before?target:target.nextSibling);
+      });
+
+      handle.addEventListener('pointerup',e=>{if(drag&&drag.pointerId===e.pointerId)finish();});
+      handle.addEventListener('pointercancel',e=>{if(drag&&drag.pointerId===e.pointerId)finish();});
+    });
+  }
+
+  async function saveAdminProductOrder(grid,ids){
+    grid.classList.add('saving-order');
+    try{
+      const results=await Promise.all(ids.map((id,index)=>db.from('products').update({sort_order:(index+1)*10}).eq('id',id)));
+      const failed=results.find(r=>r.error);
+      if(failed?.error)throw failed.error;
+      await loadCatalog();
+      renderCatalog();
+      toast('Ordre des produits enregistré.');
+    }catch(err){
+      toast('Impossible d’enregistrer l’ordre : '+(err.message||err),'error');
+      renderAdminTab();
+    }finally{
+      grid.classList.remove('saving-order');
+    }
   }
 
   async function ensureCategory(name,cats){
