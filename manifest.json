@@ -1,0 +1,8 @@
+{
+  "name": "JS Dottignies Bar",
+  "short_name": "JSD Bar",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b0e10",
+  "theme_color": "#e31b23"
+}

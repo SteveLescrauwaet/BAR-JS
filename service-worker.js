@@ -1,0 +1,1 @@
+const C="jsd-bar-v1",A=["./","./index.html","./css/style.css","./js/app.js","./js/config.js","./manifest.json"];self.addEventListener("install",e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));self.addEventListener("fetch",e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));
