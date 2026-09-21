@@ -1,5 +1,149 @@
-<!doctype html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#e31b23"><meta name="apple-mobile-web-app-capable" content="yes"><title>JS Dottignies Bar</title><link rel="manifest" href="./manifest.json"><link rel="stylesheet" href="./css/style.css"></head><body>
-<header><img src="./assets/logos/js_dottignies.png" class="club-logo" onerror="this.style.display='none'"><div><h1>JS DOTTIGNIES • BAR</h1><small>ONE TEAM</small></div><button id="adminBtn" class="ghost">⚙ Administration</button></header>
-<nav id="categories"></nav><main><section id="catalog"></section><aside id="ticket"><div class="ticket-head"><strong>COMMANDE EN COURS</strong><button id="clearCart" class="icon">🗑</button></div><div id="cart"></div><div class="checkout"><div class="total"><b>TOTAL</b><strong id="total">0,00 €</strong></div><div class="payrow"><button id="cashBtn" class="secondary">💶 ESPÈCES</button><button id="cardBtn" class="primary">💳 CARTE / SUMUP</button></div></div></aside></main>
-<button id="mobileCart" class="mobile-cart">🛒 COMMANDE <span id="mobileCount">0</span><strong id="mobileTotal">0,00 €</strong></button><div id="modal" class="modal hidden"><div class="modal-card" id="modalCard"></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./js/config.js"></script><script src="./js/app.js"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0e10" />
+  <meta name="description" content="Caisse et gestion du bar JS Dottignies" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="./assets/css/app.css" />
+  <title>JS Dottignies • Bar</title>
+</head>
+<body>
+  <div id="offlineBanner" class="offline-banner hidden">Connexion Internet indisponible — les opérations Supabase sont suspendues.</div>
+
+  <main id="setupScreen" class="center-screen hidden">
+    <section class="auth-card setup-card">
+      <div class="brand brand-center">
+        <img src="./assets/icons/club-logo.svg" alt="JS Dottignies" class="brand-logo" />
+        <div><h1>JS DOTTIGNIES • BAR</h1><p>ONE TEAM</p></div>
+      </div>
+      <h2>Configuration Supabase invalide</h2>
+      <p>La connexion Supabase est intégrée directement dans <code>index.html</code>.</p>
+      <p class="muted">Vérifie l’URL du projet et la clé publishable intégrées en bas du fichier.</p>
+    </section>
+  </main>
+
+  <main id="authScreen" class="center-screen hidden">
+    <section class="auth-card">
+      <div class="brand brand-center">
+        <img src="./assets/icons/club-logo.svg" alt="JS Dottignies" class="brand-logo" />
+        <div><h1>JS DOTTIGNIES • BAR</h1><p>ONE TEAM</p></div>
+      </div>
+      <form id="loginForm" class="stack gap-12">
+        <label>Email<input id="loginEmail" type="email" autocomplete="username" required /></label>
+        <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+        <button class="btn primary big" type="submit">Se connecter</button>
+      </form>
+      <p id="loginError" class="form-error hidden"></p>
+      <p class="muted small">Les tablettes peuvent utiliser le même compte « caisse ». Le PC d’administration utilise le compte administrateur.</p>
+    </section>
+  </main>
+
+  <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="./assets/icons/club-logo.svg" alt="JS Dottignies" class="brand-logo" />
+        <div><h1>JS DOTTIGNIES • BAR</h1><p>ONE TEAM</p></div>
+      </div>
+      <div class="top-actions">
+        <button id="deviceBtn" class="btn ghost compact" type="button" title="Nom de cet appareil">📟 <span id="deviceLabel">Appareil</span></button>
+        <span id="syncStatus" class="sync-pill">● connecté</span>
+        <button id="installBtn" class="btn ghost compact hidden" type="button">Installer</button>
+        <button id="adminBtn" class="btn ghost compact hidden" type="button">⚙ Administration</button>
+        <button id="logoutBtn" class="btn ghost compact" type="button">Déconnexion</button>
+      </div>
+    </header>
+
+    <nav class="front-tabs">
+      <button class="front-tab active" data-front-tab="sales">🛒 Vente comptoir</button>
+      <button class="front-tab" data-front-tab="cashouts">💸 Sorties de caisse</button>
+    </nav>
+
+    <section id="salesView" class="front-view">
+      <div class="pos-layout">
+        <div class="catalog-pane">
+          <div id="categoryChips" class="category-chips"></div>
+          <div id="catalog" class="catalog"></div>
+        </div>
+
+        <aside id="cartPanel" class="cart-panel">
+          <div class="cart-head">
+            <h2>COMMANDE EN COURS</h2>
+            <button id="clearCartBtn" class="icon-btn danger" title="Vider la commande">🗑</button>
+          </div>
+          <div id="cartLines" class="cart-lines"></div>
+          <div class="cart-footer">
+            <div class="total-line"><span>TOTAL</span><strong id="cartTotal">0,00 €</strong></div>
+            <div class="pay-grid">
+              <button id="cashPayBtn" class="btn payment cash" type="button">💶 ESPÈCES</button>
+              <button id="cardPayBtn" class="btn payment sumup" type="button">💳 CARTE / SUMUP</button>
+            </div>
+            <button id="offerBtn" class="btn payment offer" type="button">🎁 OFFERT PAR LE BAR</button>
+            <button id="refereeConsumptionBtn" class="btn payment referee" type="button">🏀 CONSO ARBITRE</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="cashoutsView" class="front-view hidden">
+      <div class="cashout-page page-pad">
+        <div class="page-title-row">
+          <div><h2>SORTIES DE CAISSE</h2><p class="muted">Paiements d’arbitrage — déduits du bénéfice net de la journée.</p></div>
+          <div class="metric-inline"><span>Sorties aujourd’hui</span><strong id="cashoutTodayTotal">0,00 €</strong></div>
+        </div>
+        <div class="cashout-actions">
+          <button class="cashout-type-card" data-cashout-type="Arbitre officiel">
+            <span class="big-icon">🏁</span><strong>Paiement arbitrage officiel</strong>
+            <small>Nom de l’arbitre, montant, équipe arbitrée et heure du match.</small>
+          </button>
+          <button class="cashout-type-card" data-cashout-type="Arbitre non officiel">
+            <span class="big-icon">🏀</span><strong>Paiement arbitre non officiel</strong>
+            <small>Nom du joueur, montant, équipe arbitrée et heure du match.</small>
+          </button>
+        </div>
+        <h3 class="section-title">AUJOURD’HUI</h3>
+        <div id="cashoutTodayList" class="history-list"></div>
+      </div>
+    </section>
+
+    <button id="mobileCartBtn" class="mobile-cart-btn" type="button">
+      <span>🛒 <span id="mobileCartLabel">COMMANDE</span></span><strong id="mobileCartTotal">0,00 €</strong>
+    </button>
+  </div>
+
+  <section id="adminPanel" class="admin-panel hidden">
+    <header class="admin-header">
+      <div><h1>Administration</h1><p id="adminUserLabel" class="muted"></p></div>
+      <button id="closeAdminBtn" class="btn ghost">← Retour à la caisse</button>
+    </header>
+    <nav class="admin-tabs">
+      <button class="admin-tab active" data-admin-tab="dashboard">Tableau de bord</button>
+      <button class="admin-tab" data-admin-tab="products">Produits & tarifs</button>
+      <button class="admin-tab" data-admin-tab="stock">Stock</button>
+      <button class="admin-tab" data-admin-tab="history">Historique</button>
+      <button class="admin-tab" data-admin-tab="settings">Paramètres</button>
+    </nav>
+    <div id="adminContent" class="admin-content"></div>
+  </section>
+
+  <div id="cartDrawerBackdrop" class="drawer-backdrop hidden"></div>
+  <aside id="cartDrawer" class="cart-drawer hidden"></aside>
+
+  <div id="modalRoot" class="modal-root hidden" aria-live="polite"></div>
+  <div id="toastRoot" class="toast-root"></div>
+
+  <!-- Configuration Supabase publique de la PWA.
+       IMPORTANT : ne jamais mettre ici une clé secret/service_role. -->
+  <script>
+    window.JSD_BAR_CONFIG = {
+      supabaseUrl: 'https://wxxamumaltkjzvbsmquy.supabase.co',
+      supabasePublishableKey: 'sb_publishable_1kdkz-ke7TFH6jLhd4sNRQ_d9ilhjEf'
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./assets/js/app.js"></script>
+</body>
+</html>
