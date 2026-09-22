@@ -461,8 +461,17 @@
     lines.innerHTML = entries.length ? entries.map(([id, qty]) => {
       const p = state.products.find(x => x.id === id);
       if (!p) return '';
+      const thumb = p.imageUrl
+        ? `<img class="cart-line-thumb-img" src="${esc(p.imageUrl)}" alt="${esc(p.name)}" loading="lazy" />`
+        : `<div class="cart-line-thumb-fallback">${esc(initials(p.name))}</div>`;
       return `<div class="cart-line">
-        <div><div class="cart-line-name">${esc(p.name)}</div><div class="muted small">${money(p.sale_price)} / unité</div></div>
+        <div class="cart-line-main">
+          <div class="cart-line-thumb">${thumb}</div>
+          <div class="cart-line-text">
+            <div class="cart-line-name">${esc(p.name)}</div>
+            <div class="muted small">${money(p.sale_price)} / unité</div>
+          </div>
+        </div>
         <div class="cart-line-actions">
           <button class="qty-btn" data-cart-delta="-1" data-product-id="${id}">−</button>
           <strong>${qty}</strong>
