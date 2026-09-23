@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jsd-bar-pwa-v10';
+const CACHE_NAME = 'jsd-bar-pwa-v11';
 const APP_SHELL = [
   './',
   './index.html',

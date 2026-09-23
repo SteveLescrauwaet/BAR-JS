@@ -798,7 +798,7 @@
     const productCategories=[...new Set(products.map(p=>p.category))];
     const orderedCats=[...cats.map(c=>c.name),...productCategories.filter(name=>!cats.some(c=>c.name===name))];
     root.innerHTML=`
-      <div class="admin-toolbar"><div><h2>Produits & tarifs</h2><div class="muted small">Même présentation que la caisse. Maintiens la poignée ⠿ et glisse un produit pour changer son ordre dans sa catégorie.</div></div><button class="btn primary" id="addProductBtn">＋ Ajouter un produit</button></div>
+      <div class="admin-toolbar"><div><h2>Produits & tarifs</h2><div class="muted small">Réorganise les produits dans chaque catégorie avec la poignée ⠿ ou les flèches ◀ ▶. L’ordre est repris automatiquement dans la caisse.</div></div><button class="btn primary" id="addProductBtn">＋ Ajouter un produit</button></div>
       <div class="admin-category-order admin-card">
         <div><h3>Ordre des catégories</h3><p class="muted small">L'ordre des catégories reste modifiable avec les flèches.</p></div>
         <div class="admin-category-order-chips" id="categoryOrderList">${cats.map((c,i)=>`
@@ -810,7 +810,7 @@
           if(!group.length)return '';
           return `<section class="admin-category-section">
             <div class="admin-category-heading"><div class="category-title">${esc(category)}</div><span class="muted small">${group.length} produit${group.length>1?'s':''}</span></div>
-            <div class="admin-product-grid" data-admin-product-grid data-category="${esc(category)}">${group.map(adminProductCardHtml).join('')}</div>
+            <div class="admin-product-grid" data-admin-product-grid data-category="${esc(category)}">${group.map((p,i)=>adminProductCardHtml(p,i,group.length)).join('')}</div>
           </section>`;
         }).join('')}
       </div>`;
@@ -818,12 +818,14 @@
     byId('addProductBtn').addEventListener('click',()=>productModal(null,cats,products));
     qsa('[data-edit-product]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();productModal(products.find(p=>p.id===b.dataset.editProduct),cats,products);}));
     qsa('[data-toggle-product]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();toggleProduct(products.find(p=>p.id===b.dataset.toggleProduct));}));
+    qsa('[data-product-left]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();moveProduct(products,b.dataset.productLeft,-1);}));
+    qsa('[data-product-right]',root).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();moveProduct(products,b.dataset.productRight,1);}));
     qsa('[data-cat-up]',root).forEach(b=>b.addEventListener('click',()=>moveCategory(cats,Number(b.dataset.catUp),-1)));
     qsa('[data-cat-down]',root).forEach(b=>b.addEventListener('click',()=>moveCategory(cats,Number(b.dataset.catDown),1)));
     initAdminProductReorder(root);
   }
 
-  function adminProductCardHtml(p){
+  function adminProductCardHtml(p,index,total){
     const low=p.stock_tracked&&p.starting_stock>0&&p.stock<=p.starting_stock*.10;
     const photo=p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}" loading="lazy" />`:`<div class="product-fallback">${esc(initials(p.name))}</div>`;
     return `<article class="admin-product-card ${p.active?'':'inactive'}" data-admin-product-card data-product-id="${p.id}">
@@ -833,6 +835,11 @@
       <div class="admin-product-name">${esc(p.name)}${p.active?'':'<span class="admin-inactive-pill">Inactif</span>'}</div>
       <div class="admin-product-sale">${money(p.sale_price)}</div>
       <div class="admin-product-data"><span>Achat <strong>${money(p.cost_price)}</strong></span><span>Marge <strong>${money(num(p.sale_price)-num(p.cost_price))}</strong></span></div>
+      <div class="admin-product-order-actions">
+        <span>Ordre</span>
+        <button type="button" class="mini-btn order-arrow" data-product-left="${p.id}" ${index===0?'disabled':''} title="Déplacer vers la gauche">◀</button>
+        <button type="button" class="mini-btn order-arrow" data-product-right="${p.id}" ${index===total-1?'disabled':''} title="Déplacer vers la droite">▶</button>
+      </div>
       <div class="admin-product-card-actions"><button type="button" class="mini-btn blue" data-edit-product="${p.id}">Modifier</button><button type="button" class="mini-btn ${p.active?'orange':'green'}" data-toggle-product="${p.id}">${p.active?'Désactiver':'Activer'}</button></div>
     </article>`;
   }
