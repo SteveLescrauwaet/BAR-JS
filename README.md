@@ -204,3 +204,10 @@ jsd-bar-pwa/
 ## Important
 
 Cette version a été préparée comme première conversion fonctionnelle de l'application Flutter vers une PWA. Avant une journée de match réelle, fais un test complet avec les deux tablettes : vente simultanée, annulation admin, stock, sorties de caisse, offert, conso arbitre et fond de caisse.
+
+
+## Prix d’achat / revient initiaux
+
+Le fichier `supabase/seed.sql` contient désormais les prix d’achat moyens de départ pour tous les produits.
+
+Si la base Supabase a déjà été initialisée avant cette mise à jour, exécuter une seule fois `supabase/patch_product_cost_prices.sql` dans **Supabase > SQL Editor**. Ce patch met uniquement à jour `products.cost_price` et ne touche pas aux stocks, prix de vente ou historiques.
